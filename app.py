@@ -84,7 +84,7 @@ for (u, v), m in st.session_state.incidentes.items():
                      else f"{u} → {v}: {G0[u][v]['peso']:g} → {m:g} min")
 
 # ---------------------------------------------------------------- encabezado
-st.title("Logística del Valle — rutas y flota")
+st.title("Logística del Valle: rutas y flota")
 st.write(f"**{escenario}** · {tasa:g} pedidos/h durante {horas:g} h · {vehiculos} vehículos · "
          f"semilla {int(semilla)} · puntual si se entrega en ≤ {umbral:g} min")
 if aplicados:
@@ -106,7 +106,7 @@ with tab_sim:
         st.warning("Con estos parámetros no llegó ningún pedido. Sube la tasa o las horas de recepción.")
         st.stop()
 
-    st.subheader(f"{len(pedidos)} pedidos — mismos pedidos para ambas políticas")
+    st.subheader(f"{len(pedidos)} pedidos (los mismos para ambas políticas)")
     act, rec = resultados["Actual"]["metricas"], resultados["Recomendada"]["metricas"]
     indicadores = [
         ("Entregas puntuales", "entregas puntuales", "{:.0f}", "normal"),
