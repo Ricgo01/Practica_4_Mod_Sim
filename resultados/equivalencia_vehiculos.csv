@@ -1,0 +1,4 @@
+escenario,espera con rutas recomendadas y 8 vehículos (min),vehículos que necesita la política actual,vehículos equivalentes al cambio de rutas,puntualidad actual con esa flota (%),puntualidad recomendada con 8 (%)
+Normal,2.061618252430853,11,3,72.98077503763646,98.66994085037526
+Semana Santa,17.507033964212937,11,3,55.36246593424156,80.95939699813295
+Navidad,141.81160927837064,12,4,17.560571426528135,19.366560625510544

@@ -96,7 +96,8 @@ Genera, en orden de tiempo, las `k` mejores rutas simples (sin repetir nodos) en
 | 5 | Simulación de eventos discretos con dos políticas de rutas (`src/simulacion.py`, `03_simulacion.ipynb`) | 5 | ✅ |
 | 6 | Aplicación configurable: escenarios, flota, semilla, incidentes viales (`app.py`) | 6 | ✅ |
 | 7 | Experimentos: 30 repeticiones por escenario con números aleatorios comunes (`src/experimentos.py`, `04_experimentos.ipynb`) | 7 | ✅ |
-| 8 | Análisis e informe | 8 | Pendiente |
+| 8 | Análisis: aporte de las rutas, demanda, límite de la flota y robustez (`05_analisis.ipynb`) | 8 | ✅ |
+| 9 | Informe final | Entrega | Pendiente |
 
 ## Modelo de simulación
 
@@ -206,13 +207,97 @@ Capacidad teórica de 8 vehículos (8 × 60 / ciclo promedio): **4.2 pedidos/h**
 4. **En Navidad el problema es la flota.** Incluso con las rutas recomendadas solo 19 % de las entregas son puntuales y la operación termina unas 5.5 horas después del cierre de recepción. Para superar el 90 % hacen falta **14 vehículos** con rutas recomendadas.
 5. **Menor utilización con las rutas recomendadas es una buena señal:** los vehículos quedan libres antes, así que hay holgura para absorber picos de demanda. En Navidad ambas políticas rondan el 91 %, lo que confirma que la flota está saturada.
 
+## Análisis
+
+Detalle en `05_analisis.ipynb`. Todos los experimentos usan 30 repeticiones con números aleatorios comunes.
+
+### ¿Cuánto aporta cambiar las rutas?
+
+Con 8 vehículos, la política recomendada reduce el tiempo de la solicitud a la entrega entre **49 % y 63 %** según el escenario, y sube la puntualidad 42.5 puntos en un día normal y 59.7 en Semana Santa.
+
+Para saber de dónde viene la mejora, simulamos dos políticas intermedias con los mismos pedidos:
+
+| Escenario | Actual | Solo corregir N40 | Solo ida óptima (regreso actual) | Recomendada (ida y regreso óptimos) |
+|---|---|---|---|---|
+| Normal | 56.1 % | 93.6 % | 95.3 % | **98.7 %** |
+| Semana Santa | 21.2 % | 44.5 % | 59.5 % | **81.0 %** |
+| Navidad | 8.7 % | 11.7 % | 15.9 % | **19.4 %** |
+
+![Descomposición de la mejora](resultados/descomposicion_rutas.png)
+
+- **Con demanda baja**, casi toda la mejora viene de corregir N40, la única ruta que no puede cumplir el umbral.
+- **Con demanda alta**, corregir solo N40 no basta: hay que acortar todos los ciclos para liberar vehículos.
+- **Optimizar el regreso** agrega ~20 puntos en Semana Santa (59.5 % → 81 %), aunque el regreso no cuente en el tiempo de entrega: un vehículo que vuelve antes atiende antes al siguiente pedido.
+
+**Equivalencia en vehículos:** para igualar la espera que logra la política recomendada con 8 vehículos, la actual necesitaría **11 vehículos** en Normal y Semana Santa y **12** en Navidad. Es decir, cambiar las rutas equivale a **3–4 vehículos más**. Aun con esa flota mayor, la política actual queda por debajo en puntualidad (73 % vs. 99 % en Normal), porque no corrige N40.
+
+### ¿Qué sucede al aumentar la demanda?
+
+![Puntualidad según demanda y flota](resultados/mapa_demanda_flota.png)
+
+- La puntualidad **no cae de forma gradual**: con flota fija se mantiene alta y se desploma en pocos pedidos/h cuando la demanda se acerca a la capacidad. Con 8 vehículos y rutas recomendadas: 99 % con 4 pedidos/h, 96 % con 5, 81 % con 6, 55 % con 7 y 37 % con 8.
+- Con las rutas actuales el máximo es ~75 % aunque sobren vehículos.
+- La frontera de buen servicio sigue la capacidad teórica (línea discontinua), pero algo por encima: hace falta una flota mayor que la teórica para absorber la variabilidad de las llegadas.
+
+### ¿Cuándo la flota se vuelve una limitación?
+
+La carga de la flota se resume en el factor de utilización teórico **ρ = λ · ciclo / (60 · k)** (λ pedidos/h, ciclo promedio ida + regreso, k vehículos).
+
+![Puntualidad frente a ρ](resultados/puntualidad_vs_rho.png)
+
+| ρ (rutas recomendadas) | Puntualidad promedio |
+|---|---|
+| ≤ 0.9 | 97 – 100 % |
+| 0.9 – 1.0 | ~90 % |
+| 1.0 – 1.2 | ~69 % |
+| 1.2 – 1.5 | ~37 % |
+| > 1.5 | ~15 % |
+
+**La flota es la limitación cuando ρ supera ~0.9.** Las flotas pequeñas necesitan más holgura (ρ ≈ 0.7–0.8 para llegar al 90 %) que las grandes (ρ ≈ 1), porque con más vehículos es más probable que alguno se libere pronto.
+
+| Escenario (8 vehículos) | ρ con rutas actuales | ρ con rutas recomendadas | Diagnóstico |
+|---|---|---|---|
+| Normal (4/h) | 0.95 | 0.66 | Las rutas actuales ya saturan la flota; con las recomendadas hay holgura |
+| Semana Santa (6/h) | 1.42 | 0.99 | Sin cambiar rutas la flota no alcanza; con las recomendadas queda en el límite |
+| Navidad (10/h) | 2.36 | 1.66 | La flota es la limitación con cualquier ruta: hacen falta ~14 vehículos |
+
+### Robustez
+
+**Tiempo de descarga.** La política recomendada gana con cualquier valor, pero la conclusión sobre Semana Santa depende de este supuesto:
+
+| Puntualidad con rutas recomendadas | 0 min | 5 min | 10 min | 15 min |
+|---|---|---|---|---|
+| Normal | 98.7 % | 97.0 % | 94.1 % | 90.0 % |
+| Semana Santa | 81.0 % | 68.1 % | 54.1 % | 42.0 % |
+| Navidad | 19.4 % | 16.1 % | 14.0 % | 12.2 % |
+
+**Incidente vial.** Congestionando N09 → N01 (el tramo más crítico) de 7 a 30 min, **recalcular las rutas** con Dijkstra sube la puntualidad de Semana Santa de 49 % (rutas recomendadas sin recalcular) a 69 %. La política actual queda en 19 %.
+
+### Lo que la simulación no representa
+
+- **Tráfico variable y horas pico:** los tiempos de viaje y la tasa de pedidos son constantes; en la realidad habría más retrasos y colas concentradas en ciertas horas.
+- **Carga y descarga:** se suponen instantáneas; la sensibilidad anterior muestra que importan en temporada alta.
+- **Varios pedidos por viaje:** cada vehículo lleva uno solo. Agrupar pedidos del mismo destino podría aumentar mucho la capacidad en temporada alta.
+- **Prioridades:** la cola es FIFO estricta, sin pedidos urgentes.
+- **Flota ideal:** sin averías, descansos, turnos ni límites de jornada; la operación sigue hasta terminar, aunque implique horas extra.
+- **Demanda:** destinos equiprobables y llegadas de Poisson sin tendencias ni días atípicos.
+- **Cumplimiento y datos:** se asume que los conductores siguen la ruta asignada y que la matriz de tiempos es exacta y vigente.
+- **Costos:** no se modelan combustible, salarios ni penalizaciones; el análisis dice qué es más rápido, no qué es más rentable.
+
+### Conclusiones
+
+1. **Cambiar las rutas es la decisión de mayor impacto y menor costo:** en un día normal la puntualidad pasa de 56 % a 99 %, y el efecto equivale a 3–4 vehículos adicionales.
+2. **La mejora tiene dos mecanismos:** con demanda baja, corregir N40; con demanda alta, acortar todos los ciclos, incluido el regreso.
+3. **La flota se vuelve la limitación cuando ρ supera ~0.9.** Con rutas recomendadas y 8 vehículos esto ocurre desde ~6 pedidos/h: Semana Santa queda en el límite y Navidad necesita alrededor de 14 vehículos.
+4. **La dirección de las conclusiones es robusta** (la política recomendada siempre gana), pero el tamaño de flota para temporadas altas depende de supuestos que conviene medir en la operación real, en especial el tiempo de descarga.
+
 ## Cómo ejecutar
 
 ```bash
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-jupyter notebook          # notebooks 01 a 04
+jupyter notebook          # notebooks 01 a 05
 streamlit run app.py      # aplicación
 ```
 
@@ -224,13 +309,14 @@ streamlit run app.py      # aplicación
 - `src/rutas.py` — implementación propia de Dijkstra y Yen, rutas óptimas de ida y regreso, e incidentes viales (congestión o cierre de un tramo).
 - `src/simulacion.py` — generación de pedidos, simulación de eventos discretos y métricas.
 - `src/graficas.py` — gráficas de la simulación (cola, uso de la flota, tiempos de entrega, actividad por vehículo).
-- `src/experimentos.py` — repeticiones, intervalos de confianza, diferencias pareadas y barridos de flota y demanda.
+- `src/experimentos.py` — repeticiones, intervalos de confianza, diferencias pareadas, políticas mixtas y barridos de flota y demanda.
 - `app.py` — aplicación configurable en Streamlit.
 - `01_grafo.ipynb` — construcción del grafo, red completa, validación de las rutas actuales y comparación de ida y regreso por destino.
 - `02_rutas.ipynb` — selección del algoritmo, implementación y verificación de Dijkstra y Yen, tabla comparativa de rutas por destino y efecto de incidentes viales.
 - `03_simulacion.ipynb` — descripción del modelo, validación del generador de pedidos, corrida de ejemplo y comparación de escenarios.
 - `04_experimentos.ipynb` — 30 repeticiones por escenario, comparación pareada de políticas, puntualidad por destino y barridos de flota y demanda.
-- `resultados/` — tablas (CSV) y figuras de los experimentos.
+- `05_analisis.ipynb` — descomposición de la mejora, equivalencia en vehículos, mapa demanda × flota, factor de utilización, sensibilidad e incidentes.
+- `resultados/` — tablas (CSV) y figuras de los experimentos y del análisis.
 - `requirements.txt` — dependencias de Python.
 
 ## Referencias

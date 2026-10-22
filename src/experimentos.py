@@ -41,6 +41,27 @@ def correr(escenarios=s.ESCENARIOS, repeticiones=30, vehiculos=8, horas=8.0, G=N
     return pd.DataFrame(filas)
 
 
+def correr_politicas(politicas, escenarios=s.ESCENARIOS, repeticiones=30, vehiculos=8,
+                     horas=8.0, tiempo_entrega=0.0, semilla_inicial=1):
+    """Como ``correr``, pero con políticas arbitrarias.
+
+    ``politicas`` es {nombre: rutas} con el formato de ``simulacion.rutas_politica``.
+    Todas las políticas de una misma semilla reciben los mismos pedidos.
+    """
+    filas = []
+    for escenario, tasa in escenarios.items():
+        for semilla in range(semilla_inicial, semilla_inicial + repeticiones):
+            p = s.Parametros(pedidos_por_hora=tasa, vehiculos=vehiculos, horas_recepcion=horas,
+                             semilla=semilla, tiempo_entrega=tiempo_entrega)
+            pedidos = s.generar_pedidos(tasa, horas, semilla)
+            for politica, rutas in politicas.items():
+                reg = s.simular(pedidos, rutas, vehiculos, tiempo_entrega)
+                filas.append({"escenario": escenario, "pedidos por hora": tasa,
+                              "vehículos": vehiculos, "semilla": semilla,
+                              "política": politica, **s.metricas(reg, p)})
+    return pd.DataFrame(filas)
+
+
 def intervalo(valores, confianza=0.95):
     """Media y semiancho del intervalo de confianza t de Student."""
     valores = np.asarray(valores, dtype=float)
