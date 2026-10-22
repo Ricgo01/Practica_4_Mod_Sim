@@ -1,0 +1,4 @@
+escenario,entregas puntuales,puntualidad (%),espera promedio (min),solicitud→entrega promedio (min),utilización (%),tiempo adicional (min)
+Normal,+14.3 ± 3.0,+42.5 ± 7.2,-15.0 ± 5.2,-36.8 ± 5.7,-13.6 ± 1.5,-55.1 ± 13.9
+Semana Santa,+28.6 ± 3.0,+59.7 ± 6.3,-66.3 ± 8.4,-87.8 ± 8.6,-4.7 ± 1.5,-181.6 ± 17.2
+Navidad,+8.3 ± 1.5,+10.6 ± 2.0,-148.4 ± 8.0,-170.0 ± 8.4,-0.2 ± 0.7,-340.7 ± 18.2
